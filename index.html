@@ -3,101 +3,93 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Video Studio · 一站式文生图 + 图生视频</title>
+    <title>Moyin-style AI 创作工作台（Web）</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="topbar">
-      <h1>AI Video Studio</h1>
-      <p>按照「⚙️ 准备工作 → 📝 剧本 → 🔧 AI校准 → 🌄 场景/🎭角色 → 🎬 导演/⭐S级 → 🎥 生成视频」工作流</p>
+      <div>
+        <h1>Moyin-style AI 创作工作台</h1>
+        <p>Web 架构：前端状态编排 + 后端异步队列 + 云存储分发（示例 URL）</p>
+      </div>
+      <div class="api-box">
+        <label>API Base URL
+          <input id="apiBase" value="http://127.0.0.1:8000" />
+        </label>
+      </div>
     </header>
 
     <main class="layout">
-      <section class="panel sticky">
-        <h2>工作流总览</h2>
+      <aside class="panel sticky">
+        <h2>工作流</h2>
         <ol id="workflowList" class="workflow-list"></ol>
-        <div class="actions">
-          <button id="saveBtn" class="btn">保存草稿</button>
-          <button id="loadBtn" class="btn ghost">加载草稿</button>
-          <button id="resetBtn" class="btn danger">重置</button>
-        </div>
-      </section>
+        <h3>任务看板</h3>
+        <div id="taskBoard" class="task-board">暂无任务</div>
+      </aside>
 
       <section class="panel">
         <form id="studioForm" class="form-grid">
           <article class="card" data-step="准备工作">
             <h3>⚙️ 准备工作</h3>
-            <label>项目名<input name="projectName" placeholder="例如：古风茶馆短片" required /></label>
-            <label>视频用途
-              <select name="goal">
-                <option>品牌宣传</option>
-                <option>短视频平台发布</option>
-                <option>课程/讲解</option>
-                <option>个人创作</option>
-              </select>
-            </label>
+            <label>项目名<input name="projectName" required /></label>
             <label>输出比例
               <select name="aspectRatio">
-                <option>16:9</option>
-                <option>9:16</option>
-                <option>1:1</option>
+                <option>16:9</option><option>9:16</option><option>1:1</option>
               </select>
             </label>
           </article>
 
           <article class="card" data-step="剧本">
             <h3>📝 剧本</h3>
-            <label>核心剧情<textarea name="script" rows="5" placeholder="输入故事概述、冲突、结尾等" required></textarea></label>
-            <label>分镜数量<input type="number" name="shotCount" min="1" max="20" value="4" /></label>
-            <button type="button" id="expandScript" class="btn small">AI扩展剧本（模板）</button>
+            <label>剧本文本<textarea name="script" rows="5" required></textarea></label>
+            <button type="button" id="scriptTemplate" class="btn small">填充模板</button>
           </article>
 
           <article class="card" data-step="AI校准">
             <h3>🔧 AI校准</h3>
-            <label>视觉风格关键词<textarea name="styleKeywords" rows="3" placeholder="电影感、写实、柔光、胶片颗粒..."></textarea></label>
-            <label>负面提示词<textarea name="negativePrompt" rows="3" placeholder="低清晰度、畸形、文字水印..."></textarea></label>
-            <label>模型强度（创意程度）
-              <input type="range" name="creativity" min="1" max="10" value="6" />
+            <label>风格关键词<textarea name="styleKeywords" rows="3"></textarea></label>
+            <label>负面词<textarea name="negativePrompt" rows="3"></textarea></label>
+            <label>模型路由
+              <select name="modelRoute">
+                <option value="sdxl">SDXL（图像）</option>
+                <option value="flux">FLUX（图像）</option>
+                <option value="kling">Kling（视频）</option>
+                <option value="runway">Runway（视频）</option>
+              </select>
             </label>
           </article>
 
           <article class="card" data-step="场景/角色（可选）">
             <h3>🌄 场景 / 🎭 角色（可选）</h3>
-            <label>场景设定<textarea name="scenes" rows="3" placeholder="如：黄昏街道、赛博朋克夜景"></textarea></label>
-            <label>角色设定<textarea name="characters" rows="3" placeholder="如：主角服装、表情、动作风格"></textarea></label>
+            <label>场景设定<textarea name="scenes" rows="3"></textarea></label>
+            <label>角色圣经（角色一致性）<textarea name="characterBible" rows="3" placeholder="发型、服装、标志动作、说话方式..."></textarea></label>
           </article>
 
           <article class="card" data-step="导演/S级">
             <h3>🎬 导演 / ⭐ S级</h3>
-            <label>运镜策略<textarea name="cameraDirection" rows="3" placeholder="推进、摇镜、低机位跟拍..."></textarea></label>
-            <label>节奏控制
-              <select name="pace">
-                <option>慢叙事</option>
-                <option selected>均衡</option>
-                <option>快节奏</option>
-              </select>
-            </label>
-            <label>S级增强
-              <input type="checkbox" name="sTier" checked /> 启用画质增强、镜头稳定、色彩统一
+            <label>镜头语言<textarea name="cameraDirection" rows="3"></textarea></label>
+            <label>节奏
+              <select name="pace"><option>慢</option><option selected>中</option><option>快</option></select>
             </label>
           </article>
 
           <article class="card" data-step="生成视频">
             <h3>🎥 生成视频</h3>
             <div class="row">
-              <button type="button" id="generateImageBtn" class="btn">1) 文生图</button>
-              <button type="button" id="generateVideoBtn" class="btn primary">2) 图生视频</button>
+              <button type="button" class="btn" id="createProjectBtn">A. 创建项目</button>
+              <button type="button" class="btn" id="queueImageBtn">B. 加入文生图队列</button>
+              <button type="button" class="btn primary" id="queueVideoBtn">C. 加入图生视频队列</button>
             </div>
-            <label>参考图片上传（用于图生视频）
-              <input type="file" id="imageUpload" accept="image/*" />
+            <label>参考图 URL（用于图生视频）
+              <input name="referenceImageUrl" placeholder="https://..." />
             </label>
-            <div id="preview" class="preview">暂无生成结果</div>
+            <div id="resultBox" class="preview">暂无结果</div>
           </article>
         </form>
       </section>
 
       <section class="panel">
-        <h2>请求预览（可接任意后端）</h2>
+        <h2>状态与请求</h2>
         <pre id="requestPreview"></pre>
       </section>
     </main>
