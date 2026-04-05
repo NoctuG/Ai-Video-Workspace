@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Moyin-style AI 创作工作台（Web）</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Moyin-style AI 创作工作台</h1>
+        <p>Web 架构：前端状态编排 + 后端异步队列 + 云存储分发（示例 URL）</p>
+      </div>
+      <div class="api-box">
+        <label>API Base URL
+          <input id="apiBase" value="http://127.0.0.1:8000" />
+        </label>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="panel sticky">
+        <h2>工作流</h2>
+        <ol id="workflowList" class="workflow-list"></ol>
+        <h3>任务看板</h3>
+        <div id="taskBoard" class="task-board">暂无任务</div>
+      </aside>
+
+      <section class="panel">
+        <form id="studioForm" class="form-grid">
+          <article class="card" data-step="准备工作">
+            <h3>⚙️ 准备工作</h3>
+            <label>项目名<input name="projectName" required /></label>
+            <label>输出比例
+              <select name="aspectRatio">
+                <option>16:9</option><option>9:16</option><option>1:1</option>
+              </select>
+            </label>
+          </article>
+
+          <article class="card" data-step="剧本">
+            <h3>📝 剧本</h3>
+            <label>剧本文本<textarea name="script" rows="5" required></textarea></label>
+            <button type="button" id="scriptTemplate" class="btn small">填充模板</button>
+          </article>
+
+          <article class="card" data-step="AI校准">
+            <h3>🔧 AI校准</h3>
+            <label>风格关键词<textarea name="styleKeywords" rows="3"></textarea></label>
+            <label>负面词<textarea name="negativePrompt" rows="3"></textarea></label>
+            <label>模型路由
+              <select name="modelRoute">
+                <option value="sdxl">SDXL（图像）</option>
+                <option value="flux">FLUX（图像）</option>
+                <option value="kling">Kling（视频）</option>
+                <option value="runway">Runway（视频）</option>
+              </select>
+            </label>
+          </article>
+
+          <article class="card" data-step="场景/角色（可选）">
+            <h3>🌄 场景 / 🎭 角色（可选）</h3>
+            <label>场景设定<textarea name="scenes" rows="3"></textarea></label>
+            <label>角色圣经（角色一致性）<textarea name="characterBible" rows="3" placeholder="发型、服装、标志动作、说话方式..."></textarea></label>
+          </article>
+
+          <article class="card" data-step="导演/S级">
+            <h3>🎬 导演 / ⭐ S级</h3>
+            <label>镜头语言<textarea name="cameraDirection" rows="3"></textarea></label>
+            <label>节奏
+              <select name="pace"><option>慢</option><option selected>中</option><option>快</option></select>
+            </label>
+          </article>
+
+          <article class="card" data-step="生成视频">
+            <h3>🎥 生成视频</h3>
+            <div class="row">
+              <button type="button" class="btn" id="createProjectBtn">A. 创建项目</button>
+              <button type="button" class="btn" id="queueImageBtn">B. 加入文生图队列</button>
+              <button type="button" class="btn primary" id="queueVideoBtn">C. 加入图生视频队列</button>
+            </div>
+            <label>参考图 URL（用于图生视频）
+              <input name="referenceImageUrl" placeholder="https://..." />
+            </label>
+            <div id="resultBox" class="preview">暂无结果</div>
+          </article>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>状态与请求</h2>
+        <pre id="requestPreview"></pre>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
