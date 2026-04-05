@@ -1,0 +1,102 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f1115;
+  --panel: #171a21;
+  --card: #1f2430;
+  --text: #e7eaf0;
+  --sub: #95a0b5;
+  --primary: #5aa0ff;
+  --danger: #ff6b6b;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topbar {
+  padding: 18px 24px;
+  border-bottom: 1px solid #2a3040;
+  background: #121621;
+}
+.topbar h1 { margin: 0 0 6px; font-size: 24px; }
+.topbar p { margin: 0; color: var(--sub); font-size: 14px; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 380px;
+  gap: 16px;
+  padding: 16px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid #273042;
+  border-radius: 14px;
+  padding: 14px;
+}
+.sticky { position: sticky; top: 16px; align-self: start; }
+
+.workflow-list { padding-left: 20px; color: var(--sub); line-height: 1.7; }
+.workflow-list li.done { color: #94ffcb; }
+
+.form-grid { display: grid; gap: 12px; }
+.card {
+  background: var(--card);
+  border: 1px solid #2d3648;
+  border-radius: 12px;
+  padding: 12px;
+}
+.card h3 { margin: 0 0 10px; }
+label { display: grid; gap: 6px; margin-bottom: 10px; font-size: 14px; color: var(--sub); }
+input, textarea, select {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #334156;
+  background: #141925;
+  color: var(--text);
+  padding: 9px 10px;
+}
+
+.btn {
+  border: none;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #35445f;
+  color: #fff;
+  cursor: pointer;
+}
+.btn.primary { background: var(--primary); color: #061124; font-weight: 700; }
+.btn.ghost { background: transparent; border: 1px solid #4a5870; }
+.btn.danger { background: var(--danger); }
+.btn.small { width: fit-content; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.row { display: flex; gap: 8px; }
+
+.preview {
+  min-height: 180px;
+  border: 1px dashed #4a5870;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--sub);
+  overflow: hidden;
+  text-align: center;
+  padding: 10px;
+}
+.preview img { max-width: 100%; border-radius: 8px; }
+#requestPreview {
+  background: #0f1320;
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 300px;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1200px) {
+  .layout { grid-template-columns: 1fr; }
+  .sticky { position: static; }
+}
