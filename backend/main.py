@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+import os
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -384,10 +385,12 @@ def calibrate_project(parsed: dict[str, Any], style: str, model: str) -> dict[st
     }
 
 
-app = FastAPI(title="Moyin-style Web Workflow API", version="0.3.0")
+app = FastAPI(title="AI Video Workspace API", version="0.4.0")
+CORS_ORIGINS = [x.strip() for x in os.getenv("AI_VIDEO_WORKSPACE_CORS", "*").split(",") if x.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS or ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,40 +1,26 @@
-# Moyin Creator Web Studio (MVP+)
+# AI Video Workspace
 
-本版本根据“系统配置 -> 剧本解析 -> AI 校准 -> 资产库 -> 导演流 -> S级流”需求做了模块化实现，重点不是桌面端 Electron，而是 Web 端标准架构：
+`AI Video Workspace` 是一个支持 **前后端分离**、可 **VPS 自托管部署** 的 AI 视频创作工作台（MVP+）。
 
-- 前端：单页控制台（可替换成 Next.js/React 版本）
-- 后端：FastAPI + 异步任务队列 + WebSocket
-- 存储思路：云端图床/对象存储 URL（示例）
+## 架构
 
-## 已实现模块
+- `frontend/`：纯前端控制台（静态资源，可由 Nginx 托管）
+- `backend/`：FastAPI API 服务（异步任务队列 + WebSocket）
+- `deploy/nginx/frontend.conf`：前端反向代理 `/api`、`/ws` 到后端
+- `docker-compose.yml`：一键部署前后端容器
 
-1. **系统与基础设施配置**
-   - `POST /api/settings` 保存 API 服务商、路由映射、图床配置
-   - 多 key 轮询（provider key cycle / image bed key cycle）
-2. **剧本导入与智能解析**
-   - `POST /api/script/import` 导入原始剧本
-   - 自动拆解为 scenes / storyboards / characters / dialogues
-3. **AI 校准引擎**
-   - `POST /api/calibration` 输出场景、分镜、角色三类校准 prompt
-4. **素材库生成（可选）**
-   - `POST /api/assets/scene`
-   - `POST /api/assets/character`
-5. **导演分镜工作流**
-   - `POST /api/director/sync`
-   - `POST /api/director/batch-image`
-   - `POST /api/director/batch-video`
-6. **S级多模态创作流**
-   - `POST /api/sclass/compose`
-   - 支持分组校验与任务下发
+## 功能模块
 
-## 非功能性能力（MVP 范围）
+1. 系统配置：服务商、路由、图床、多 Key 轮询
+2. 剧本导入与智能拆解：Scene / Storyboard / Character / Dialogue
+3. AI 校准：场景/分镜/角色提示词深化
+4. 素材库（可选）：场景图/角色图生成任务
+5. 导演工作流：分镜同步、批量生图、批量生视频
+6. S级工作流：分镜分组、参数校验、一键生成任务
 
-- 任务异步化：任务秒回 + Worker 后台处理
-- 并行/高并发基础：队列模型 + 多任务入队
-- 稳定性基础：失败自动重试（max_retries）
-- 数据连贯性：项目结构化状态贯穿全流程
+## 本地开发（前后端分离）
 
-## 启动方式
+### 后端
 
 ```bash
 cd backend
@@ -44,17 +30,44 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-另开终端：
+### 前端
 
 ```bash
+cd frontend
 python -m http.server 5500
 ```
 
-访问：`http://127.0.0.1:5500`
+打开：`http://127.0.0.1:5500`
 
-## 后续建议（生产化）
+> 前端会读取 `frontend/config.js` 中的 API_BASE。
 
-- 队列：替换为 Redis + BullMQ/Celery
-- 存储：接入 PostgreSQL 持久化项目和任务
-- 文件：接入 OSS/S3 并提供签名下载链接
-- 网关：增加 provider 熔断、限流、失败接管
+## VPS 自托管（推荐 Docker Compose）
+
+```bash
+git clone <your-repo-url>
+cd Ai-Video-Workspace
+docker compose up -d --build
+```
+
+启动后：
+- 前端：`http://<VPS-IP>:8080`
+- 后端：`http://<VPS-IP>:8000`
+
+## VPS 纯 Nginx + Systemd（可选）
+
+1. 使用 systemd 启动 `uvicorn main:app`（后端）
+2. 使用 Nginx 托管 `frontend/` 静态文件
+3. Nginx 反代 `/api/*` 和 `/ws/*` 到后端服务
+4. 配置域名与 HTTPS（Let's Encrypt）
+
+## 环境变量
+
+- `AI_VIDEO_WORKSPACE_CORS`：后端 CORS 白名单（逗号分隔）
+  - 例如：`http://localhost:8080,http://127.0.0.1:8080`
+
+## 生产化建议
+
+- 队列迁移到 Redis + BullMQ/Celery
+- 数据持久化到 PostgreSQL
+- 文件存储迁移 OSS/S3（签名上传/下载）
+- 增加 provider 熔断、限流、失败接管
