@@ -3,94 +3,75 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Moyin-style AI 创作工作台（Web）</title>
+    <title>Moyin Creator Web Studio</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="topbar">
-      <div>
-        <h1>Moyin-style AI 创作工作台</h1>
-        <p>Web 架构：前端状态编排 + 后端异步队列 + 云存储分发（示例 URL）</p>
-      </div>
-      <div class="api-box">
-        <label>API Base URL
-          <input id="apiBase" value="http://127.0.0.1:8000" />
-        </label>
-      </div>
+      <h1>Moyin Creator · Web Studio (MVP+)</h1>
+      <label>API Base <input id="apiBase" value="http://127.0.0.1:8000" /></label>
     </header>
 
     <main class="layout">
       <aside class="panel sticky">
-        <h2>工作流</h2>
-        <ol id="workflowList" class="workflow-list"></ol>
-        <h3>任务看板</h3>
+        <h3>核心流程</h3>
+        <ol id="workflowList"></ol>
+        <h3>任务队列</h3>
         <div id="taskBoard" class="task-board">暂无任务</div>
       </aside>
 
-      <section class="panel">
-        <form id="studioForm" class="form-grid">
-          <article class="card" data-step="准备工作">
-            <h3>⚙️ 准备工作</h3>
-            <label>项目名<input name="projectName" required /></label>
-            <label>输出比例
-              <select name="aspectRatio">
-                <option>16:9</option><option>9:16</option><option>1:1</option>
-              </select>
-            </label>
-          </article>
+      <section class="panel form-grid">
+        <article class="card">
+          <h3>模块一：系统配置</h3>
+          <textarea id="settingsJson" rows="8"></textarea>
+          <button class="btn" id="saveSettingsBtn">保存系统配置</button>
+        </article>
 
-          <article class="card" data-step="剧本">
-            <h3>📝 剧本</h3>
-            <label>剧本文本<textarea name="script" rows="5" required></textarea></label>
-            <button type="button" id="scriptTemplate" class="btn small">填充模板</button>
-          </article>
+        <article class="card">
+          <h3>模块二：剧本导入与解析</h3>
+          <label>项目名 <input id="projectName" value="演示项目" /></label>
+          <textarea id="scriptInput" rows="8" placeholder="场景1: 夜雨街道\n主角: 我必须在黎明前找到她。"></textarea>
+          <div class="row">
+            <button class="btn" id="importScriptBtn">导入并解析剧本</button>
+            <button class="btn" id="loadProjectBtn">读取当前项目</button>
+          </div>
+        </article>
 
-          <article class="card" data-step="AI校准">
-            <h3>🔧 AI校准</h3>
-            <label>风格关键词<textarea name="styleKeywords" rows="3"></textarea></label>
-            <label>负面词<textarea name="negativePrompt" rows="3"></textarea></label>
-            <label>模型路由
-              <select name="modelRoute">
-                <option value="sdxl">SDXL（图像）</option>
-                <option value="flux">FLUX（图像）</option>
-                <option value="kling">Kling（视频）</option>
-                <option value="runway">Runway（视频）</option>
-              </select>
-            </label>
-          </article>
+        <article class="card">
+          <h3>模块三：AI 校准引擎</h3>
+          <label>风格 <input id="calibStyle" value="cinematic noir" /></label>
+          <label>目标模型 <input id="calibModel" value="gemini-3-pro-image-preview" /></label>
+          <button class="btn" id="runCalibrationBtn">执行场景/分镜/角色校准</button>
+        </article>
 
-          <article class="card" data-step="场景/角色（可选）">
-            <h3>🌄 场景 / 🎭 角色（可选）</h3>
-            <label>场景设定<textarea name="scenes" rows="3"></textarea></label>
-            <label>角色圣经（角色一致性）<textarea name="characterBible" rows="3" placeholder="发型、服装、标志动作、说话方式..."></textarea></label>
-          </article>
+        <article class="card">
+          <h3>模块四：素材库生成（可选）</h3>
+          <div class="row">
+            <button class="btn" id="genSceneAssetBtn">生成场景参考图</button>
+            <button class="btn" id="genCharAssetBtn">生成角色参考图</button>
+          </div>
+        </article>
 
-          <article class="card" data-step="导演/S级">
-            <h3>🎬 导演 / ⭐ S级</h3>
-            <label>镜头语言<textarea name="cameraDirection" rows="3"></textarea></label>
-            <label>节奏
-              <select name="pace"><option>慢</option><option selected>中</option><option>快</option></select>
-            </label>
-          </article>
+        <article class="card">
+          <h3>模块五：导演分镜工作流</h3>
+          <label>分镜 IDs（逗号分隔）<input id="storyboardIds" value="sb_1,sb_2,sb_3" /></label>
+          <div class="row">
+            <button class="btn" id="syncDirectorBtn">加载剧本分镜</button>
+            <button class="btn" id="batchImageBtn">批量合并生图</button>
+            <button class="btn" id="batchVideoBtn">批量生视频</button>
+          </div>
+        </article>
 
-          <article class="card" data-step="生成视频">
-            <h3>🎥 生成视频</h3>
-            <div class="row">
-              <button type="button" class="btn" id="createProjectBtn">A. 创建项目</button>
-              <button type="button" class="btn" id="queueImageBtn">B. 加入文生图队列</button>
-              <button type="button" class="btn primary" id="queueVideoBtn">C. 加入图生视频队列</button>
-            </div>
-            <label>参考图 URL（用于图生视频）
-              <input name="referenceImageUrl" placeholder="https://..." />
-            </label>
-            <div id="resultBox" class="preview">暂无结果</div>
-          </article>
-        </form>
+        <article class="card">
+          <h3>模块六：S级多模态创作流</h3>
+          <textarea id="sclassJson" rows="6"></textarea>
+          <button class="btn primary" id="runSclassBtn">一键 S级 成片任务</button>
+        </article>
       </section>
 
       <section class="panel">
-        <h2>状态与请求</h2>
-        <pre id="requestPreview"></pre>
+        <h3>状态预览</h3>
+        <pre id="preview"></pre>
       </section>
     </main>
 
