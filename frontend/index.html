@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Video Workspace</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>AI Video Workspace · Frontend</h1>
+      <label>API Base <input id="apiBase" value="http://127.0.0.1:8000" /></label>
+    </header>
+
+    <main class="layout">
+      <aside class="panel sticky">
+        <h3>核心流程</h3>
+        <ol id="workflowList"></ol>
+        <h3>任务队列</h3>
+        <div id="taskBoard" class="task-board">暂无任务</div>
+      </aside>
+
+      <section class="panel form-grid">
+        <article class="card">
+          <h3>模块一：系统配置</h3>
+          <textarea id="settingsJson" rows="8"></textarea>
+          <button class="btn" id="saveSettingsBtn">保存系统配置</button>
+        </article>
+
+        <article class="card">
+          <h3>模块二：剧本导入与解析</h3>
+          <label>项目名 <input id="projectName" value="演示项目" /></label>
+          <textarea id="scriptInput" rows="8" placeholder="场景1: 夜雨街道\n主角: 我必须在黎明前找到她。"></textarea>
+          <div class="row">
+            <button class="btn" id="importScriptBtn">导入并解析剧本</button>
+            <button class="btn" id="loadProjectBtn">读取当前项目</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>模块三：AI 校准引擎</h3>
+          <label>风格 <input id="calibStyle" value="cinematic noir" /></label>
+          <label>目标模型 <input id="calibModel" value="gemini-3-pro-image-preview" /></label>
+          <button class="btn" id="runCalibrationBtn">执行场景/分镜/角色校准</button>
+        </article>
+
+        <article class="card">
+          <h3>模块四：素材库生成（可选）</h3>
+          <div class="row">
+            <button class="btn" id="genSceneAssetBtn">生成场景参考图</button>
+            <button class="btn" id="genCharAssetBtn">生成角色参考图</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>模块五：导演分镜工作流</h3>
+          <label>分镜 IDs（逗号分隔）<input id="storyboardIds" value="sb_1,sb_2,sb_3" /></label>
+          <div class="row">
+            <button class="btn" id="syncDirectorBtn">加载剧本分镜</button>
+            <button class="btn" id="batchImageBtn">批量合并生图</button>
+            <button class="btn" id="batchVideoBtn">批量生视频</button>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>模块六：S级多模态创作流</h3>
+          <textarea id="sclassJson" rows="6"></textarea>
+          <button class="btn primary" id="runSclassBtn">一键 S级 成片任务</button>
+        </article>
+      </section>
+
+      <section class="panel">
+        <h3>状态预览</h3>
+        <pre id="preview"></pre>
+      </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
