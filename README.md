@@ -39,7 +39,8 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ### 前端
 ```bash
 cd frontend
-python -m http.server 5500
+npm install
+npm run dev
 ```
 
 访问：`http://127.0.0.1:5500`
