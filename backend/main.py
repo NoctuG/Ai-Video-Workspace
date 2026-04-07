@@ -52,6 +52,40 @@ class ScriptInputRequest(BaseModel):
     raw_script: str = Field(..., min_length=5)
 
 
+class ProjectCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1)
+    style_prompt: str = "cinematic short drama"
+    style_lock: bool = True
+    base_seed: int = 42
+
+
+class ProjectUpdateRequest(BaseModel):
+    name: str | None = None
+    style_prompt: str | None = None
+    style_lock: bool | None = None
+    base_seed: int | None = None
+
+
+class ChapterCreateRequest(BaseModel):
+    title: str = Field(..., min_length=1)
+    script: str = Field(..., min_length=5)
+
+
+class ShotBatchUpdateRequest(BaseModel):
+    shot_ids: list[str]
+    patch: dict[str, Any]
+
+
+class ShotGenerateRequest(BaseModel):
+    model: str = "seedance-1.5"
+    duration_sec: int = 5
+
+
+class TimelineSaveRequest(BaseModel):
+    clips: list[dict[str, Any]] = Field(default_factory=list)
+    bgm_url: str | None = None
+
+
 class CalibrationRequest(BaseModel):
     project_id: str
     style: str = "cinematic"
@@ -385,6 +419,48 @@ def calibrate_project(parsed: dict[str, Any], style: str, model: str) -> dict[st
     }
 
 
+def simplify_script(raw_script: str) -> str:
+    lines = [x.strip() for x in raw_script.splitlines() if x.strip()]
+    compact = []
+    for line in lines[:20]:
+        compact.append(line.replace("：", ":"))
+    return "\n".join(compact)
+
+
+def extract_shots(project: dict[str, Any], chapter_id: str, script: str) -> list[dict[str, Any]]:
+    lines = [x.strip() for x in script.splitlines() if x.strip()]
+    shots: list[dict[str, Any]] = []
+    for idx, line in enumerate(lines, start=1):
+        shot_id = str(uuid.uuid4())
+        shot = {
+            "id": shot_id,
+            "chapter_id": chapter_id,
+            "order": idx,
+            "content": line,
+            "camera_size": "中景",
+            "camera_angle": "平视",
+            "camera_move": "轻推",
+            "emotion": "紧张",
+            "duration_sec": 5,
+            "atmosphere": "电影感",
+            "dialogue": line.split(":", 1)[1].strip() if ":" in line else "",
+            "music": "dramatic",
+            "sfx": "rain",
+            "hidden": False,
+            "prompts": {
+                "start": f"开场定格，{line}",
+                "keyframe": f"关键动作，{line}",
+                "end": f"动作收束，{line}",
+            },
+            "versions": [{"version": 1, "created_at": time.time()}],
+            "current_version": 1,
+            "latest_asset_id": None,
+            "seed": project.get("base_seed", 42) + idx,
+        }
+        shots.append(shot)
+    return shots
+
+
 app = FastAPI(title="AI Video Workspace API", version="0.4.0")
 CORS_ORIGINS = [x.strip() for x in os.getenv("AI_VIDEO_WORKSPACE_CORS", "*").split(",") if x.strip()]
 
@@ -399,6 +475,10 @@ app.add_middleware(
 system_store = SystemStore()
 manager = TaskManager(system_store)
 PROJECTS: dict[str, dict[str, Any]] = {}
+CHAPTERS: dict[str, dict[str, Any]] = {}
+SHOTS: dict[str, dict[str, Any]] = {}
+GENERATED_ASSETS: dict[str, dict[str, Any]] = {}
+TIMELINES: dict[str, dict[str, Any]] = {}
 
 
 @app.on_event("startup")
@@ -425,6 +505,176 @@ async def save_settings(payload: SystemSettingsRequest) -> dict[str, Any]:
 @app.get("/api/settings")
 async def get_settings() -> dict[str, Any]:
     return system_store.summary()
+
+
+@app.post("/api/projects")
+async def create_project(payload: ProjectCreateRequest) -> dict[str, Any]:
+    project_id = str(uuid.uuid4())
+    project = {
+        "id": project_id,
+        "name": payload.name,
+        "style_prompt": payload.style_prompt,
+        "style_lock": payload.style_lock,
+        "base_seed": payload.base_seed,
+        "status": "draft",
+        "created_at": time.time(),
+        "updated_at": time.time(),
+    }
+    PROJECTS[project_id] = project
+    return project
+
+
+@app.patch("/api/projects/{project_id}")
+async def update_project(project_id: str, payload: ProjectUpdateRequest) -> dict[str, Any]:
+    project = PROJECTS.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="project not found")
+    for k, v in payload.model_dump(exclude_none=True).items():
+        project[k] = v
+    project["updated_at"] = time.time()
+    return project
+
+
+@app.get("/api/projects/{project_id}/dashboard")
+async def project_dashboard(project_id: str) -> dict[str, Any]:
+    project = PROJECTS.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="project not found")
+    chapters = [x for x in CHAPTERS.values() if x["project_id"] == project_id]
+    shots = [x for x in SHOTS.values() if x["project_id"] == project_id]
+    completed_shots = [x for x in shots if x.get("latest_asset_id")]
+    return {
+        "project": project,
+        "chapter_count": len(chapters),
+        "shot_count": len(shots),
+        "generated_count": len(completed_shots),
+    }
+
+
+@app.post("/api/projects/{project_id}/chapters")
+async def create_chapter(project_id: str, payload: ChapterCreateRequest) -> dict[str, Any]:
+    project = PROJECTS.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="project not found")
+    chapter_id = str(uuid.uuid4())
+    simplified_script = simplify_script(payload.script)
+    shots = extract_shots(project, chapter_id, simplified_script)
+    chapter = {
+        "id": chapter_id,
+        "project_id": project_id,
+        "title": payload.title,
+        "script_raw": payload.script,
+        "script_simplified": simplified_script,
+        "shot_ids": [x["id"] for x in shots],
+        "status": "ready",
+        "created_at": time.time(),
+        "updated_at": time.time(),
+    }
+    CHAPTERS[chapter_id] = chapter
+    for shot in shots:
+        SHOTS[shot["id"]] = {**shot, "project_id": project_id}
+    return {"chapter": chapter, "shots": shots}
+
+
+@app.get("/api/chapters/{chapter_id}")
+async def get_chapter(chapter_id: str) -> dict[str, Any]:
+    chapter = CHAPTERS.get(chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="chapter not found")
+    shots = [SHOTS[x] for x in chapter["shot_ids"] if x in SHOTS]
+    return {"chapter": chapter, "shots": shots}
+
+
+@app.patch("/api/shots/{shot_id}")
+async def update_shot(shot_id: str, patch: dict[str, Any]) -> dict[str, Any]:
+    shot = SHOTS.get(shot_id)
+    if not shot:
+        raise HTTPException(status_code=404, detail="shot not found")
+    shot.update(patch)
+    return shot
+
+
+@app.post("/api/shots/batch-update")
+async def batch_update_shots(payload: ShotBatchUpdateRequest) -> dict[str, Any]:
+    updated = 0
+    for shot_id in payload.shot_ids:
+        shot = SHOTS.get(shot_id)
+        if not shot:
+            continue
+        shot.update(payload.patch)
+        updated += 1
+    return {"updated": updated}
+
+
+@app.post("/api/shots/{shot_id}/generate")
+async def generate_shot_video(shot_id: str, payload: ShotGenerateRequest) -> dict[str, Any]:
+    shot = SHOTS.get(shot_id)
+    if not shot:
+        raise HTTPException(status_code=404, detail="shot not found")
+    task = await manager.create_task(
+        TaskCreateRequest(
+            project_id=shot["project_id"],
+            task_type="text_to_video",
+            input={
+                "shot_id": shot_id,
+                "model": payload.model,
+                "duration_sec": payload.duration_sec,
+                "prompt": shot["content"],
+            },
+        )
+    )
+    asset_id = str(uuid.uuid4())
+    GENERATED_ASSETS[asset_id] = {
+        "id": asset_id,
+        "project_id": shot["project_id"],
+        "chapter_id": shot["chapter_id"],
+        "shot_id": shot_id,
+        "type": "video",
+        "url": f"https://cdn.example.com/{shot['project_id']}/{asset_id}.mp4",
+        "quality": "draft",
+        "tags": ["p0", "shot"],
+        "created_at": time.time(),
+        "task_id": task.id,
+    }
+    shot["latest_asset_id"] = asset_id
+    return {"task": manager.serialize(task), "asset": GENERATED_ASSETS[asset_id]}
+
+
+@app.get("/api/projects/{project_id}/generated-assets")
+async def list_generated_assets(project_id: str) -> list[dict[str, Any]]:
+    return [x for x in GENERATED_ASSETS.values() if x["project_id"] == project_id]
+
+
+@app.post("/api/projects/{project_id}/timeline")
+async def save_timeline(project_id: str, payload: TimelineSaveRequest) -> dict[str, Any]:
+    if project_id not in PROJECTS:
+        raise HTTPException(status_code=404, detail="project not found")
+    timeline = {
+        "project_id": project_id,
+        "clips": payload.clips,
+        "bgm_url": payload.bgm_url,
+        "updated_at": time.time(),
+    }
+    TIMELINES[project_id] = timeline
+    return timeline
+
+
+@app.get("/api/projects/{project_id}/timeline")
+async def get_timeline(project_id: str) -> dict[str, Any]:
+    return TIMELINES.get(project_id, {"project_id": project_id, "clips": [], "bgm_url": None})
+
+
+@app.post("/api/projects/{project_id}/export")
+async def export_project(project_id: str) -> dict[str, Any]:
+    timeline = TIMELINES.get(project_id)
+    if not timeline:
+        raise HTTPException(status_code=400, detail="timeline is empty")
+    return {
+        "project_id": project_id,
+        "status": "success",
+        "export_url": f"https://cdn.example.com/{project_id}/final-cut.mp4",
+        "clip_count": len(timeline.get("clips", [])),
+    }
 
 
 @app.post("/api/script/import")
