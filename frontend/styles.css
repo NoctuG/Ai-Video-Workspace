@@ -15,7 +15,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter,
 .preview-panel { margin: 0 12px 12px; }
 .box { border: 1px dashed #465984; border-radius: 8px; padding: 8px; min-height: 80px; margin-top: 8px; display: grid; gap: 8px; }
 label { display: grid; gap: 6px; color: var(--muted); margin-bottom: 8px; }
-input, textarea { width: 100%; background: #0f1625; color: var(--text); border: 1px solid #40547d; border-radius: 8px; padding: 8px; }
+input, textarea, select { width: 100%; background: #0f1625; color: var(--text); border: 1px solid #40547d; border-radius: 8px; padding: 8px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
 .btn { border: none; background: #465a81; color: #fff; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
 .btn.primary { background: var(--primary); color: #0a1221; font-weight: 700; }

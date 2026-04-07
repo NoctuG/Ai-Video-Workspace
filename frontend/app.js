@@ -4,7 +4,10 @@ const state = {
   shots: [],
   selectedShotIds: new Set(),
   assets: [],
+  assetLibrary: [],
   timeline: [],
+  templates: [],
+  lastTemplateId: null,
   tasks: new Map(),
 };
 
@@ -24,9 +27,24 @@ const els = {
   generateSelectedBtn: document.getElementById("generateSelectedBtn"),
   reloadAssetsBtn: document.getElementById("reloadAssetsBtn"),
   assetsBox: document.getElementById("assetsBox"),
+  assetName: document.getElementById("assetName"),
+  assetType: document.getElementById("assetType"),
+  createAssetBtn: document.getElementById("createAssetBtn"),
+  listAssetLibraryBtn: document.getElementById("listAssetLibraryBtn"),
+  assetLibraryBox: document.getElementById("assetLibraryBox"),
   timelineBox: document.getElementById("timelineBox"),
   saveTimelineBtn: document.getElementById("saveTimelineBtn"),
+  saveMultiTrackBtn: document.getElementById("saveMultiTrackBtn"),
   exportBtn: document.getElementById("exportBtn"),
+  templateName: document.getElementById("templateName"),
+  templateBody: document.getElementById("templateBody"),
+  createTemplateBtn: document.getElementById("createTemplateBtn"),
+  applyTemplateBtn: document.getElementById("applyTemplateBtn"),
+  modelProvider: document.getElementById("modelProvider"),
+  modelName: document.getElementById("modelName"),
+  createModelBtn: document.getElementById("createModelBtn"),
+  testModelBtn: document.getElementById("testModelBtn"),
+  modelBox: document.getElementById("modelBox"),
   preview: document.getElementById("preview"),
 };
 
@@ -56,7 +74,9 @@ function renderPreview(lastAction) {
       shotCount: state.shots.length,
       selectedShots: [...state.selectedShotIds],
       assets: state.assets,
+      assetLibrary: state.assetLibrary,
       timeline: state.timeline,
+      templates: state.templates,
       tasks: [...state.tasks.values()].map((x) => ({ id: x.id, status: x.status, progress: x.progress })),
     },
     null,
@@ -139,6 +159,32 @@ function renderTimeline() {
     .join("");
 }
 
+function renderAssetLibrary() {
+  if (!state.assetLibrary.length) {
+    els.assetLibraryBox.innerHTML = "<p>资产库为空</p>";
+    return;
+  }
+  els.assetLibraryBox.innerHTML = state.assetLibrary
+    .map((x) => `<div class='asset-item'><strong>${x.type}</strong> · ${x.name} · ${x.scope}</div>`)
+    .join("");
+}
+
+function renderModels(payload) {
+  if (!payload) {
+    els.modelBox.innerHTML = "<p>暂无模型</p>";
+    return;
+  }
+  const all = [
+    ...(payload.text || []),
+    ...(payload.image || []),
+    ...(payload.video || []),
+    ...(payload.audio || []),
+  ];
+  els.modelBox.innerHTML = all
+    .map((m) => `<div class='asset-item'>${m.model_type} · ${m.provider}/${m.model_name}${m.is_default ? " (default)" : ""}</div>`)
+    .join("");
+}
+
 async function refreshDashboard() {
   if (!state.project) return;
   const dash = await request(`/api/projects/${state.project.id}/dashboard`);
@@ -190,6 +236,10 @@ async function generateShot(shotId) {
   const data = await request(`/api/shots/${shotId}/generate`, "POST", {
     model: "seedance-1.5",
     duration_sec: 5,
+    reference_asset_ids: state.assetLibrary.slice(0, 1).map((x) => x.id),
+    controlnet_pose: true,
+    controlnet_depth: true,
+    lip_sync: true,
   });
   state.tasks.set(data.task.id, data.task);
   await loadAssets();
@@ -216,6 +266,81 @@ async function saveTimeline() {
     bgm_url: null,
   });
   renderPreview(`save-timeline:${timeline.clips.length}`);
+}
+
+async function saveMultiTrack() {
+  if (!state.project) return;
+  const payload = {
+    video_tracks: [state.timeline],
+    audio_tracks: [[{ kind: "bgm", url: "https://cdn.example.com/bgm/theme.mp3", start: 0 }]],
+  };
+  await request(`/api/projects/${state.project.id}/timeline/multitrack`, "POST", payload);
+  renderPreview("save-multitrack");
+}
+
+async function createTemplate() {
+  if (!state.project) throw new Error("请先创建项目");
+  const data = await request("/api/templates", "POST", {
+    name: els.templateName.value,
+    category: "storyboard",
+    body: els.templateBody.value,
+    scope: "project",
+    project_id: state.project.id,
+  });
+  state.lastTemplateId = data.id;
+  state.templates.push(data);
+  renderPreview("create-template");
+}
+
+async function applyTemplate() {
+  if (!state.chapter || !state.lastTemplateId) return;
+  await request(`/api/chapters/${state.chapter.id}/init-from-template`, "POST", {
+    template_id: state.lastTemplateId,
+  });
+  const chapter = await request(`/api/chapters/${state.chapter.id}`);
+  state.shots = chapter.shots;
+  renderShots();
+  renderPreview("apply-template");
+}
+
+async function createAsset() {
+  if (!state.project) throw new Error("请先创建项目");
+  await request("/api/assets/library", "POST", {
+    name: els.assetName.value,
+    type: els.assetType.value,
+    scope: "project",
+    project_id: state.project.id,
+    tags: ["p1"],
+    prompt_template: "consistent character",
+  });
+  await listAssetLibrary();
+}
+
+async function listAssetLibrary() {
+  if (!state.project) return;
+  state.assetLibrary = await request(`/api/assets/library?project_id=${state.project.id}`);
+  renderAssetLibrary();
+  renderPreview("list-asset-library");
+}
+
+async function createModel() {
+  await request("/api/models/providers", "POST", {
+    provider: els.modelProvider.value,
+    model_type: "text",
+    model_name: els.modelName.value,
+    is_default: true,
+  });
+  const models = await request("/api/models/providers");
+  renderModels(models);
+  renderPreview("create-model");
+}
+
+async function testModel() {
+  const result = await request("/api/models/test", "POST", {
+    provider: els.modelProvider.value,
+    model_name: els.modelName.value,
+  });
+  renderPreview(`test-model:${result.status}`);
 }
 
 async function exportProject() {
@@ -245,7 +370,14 @@ function bindEvents() {
   els.generateSelectedBtn.addEventListener("click", () => generateSelected().catch((e) => renderPreview(e.message)));
   els.reloadAssetsBtn.addEventListener("click", () => loadAssets().catch((e) => renderPreview(e.message)));
   els.saveTimelineBtn.addEventListener("click", () => saveTimeline().catch((e) => renderPreview(e.message)));
+  els.saveMultiTrackBtn.addEventListener("click", () => saveMultiTrack().catch((e) => renderPreview(e.message)));
   els.exportBtn.addEventListener("click", () => exportProject().catch((e) => renderPreview(e.message)));
+  els.createTemplateBtn.addEventListener("click", () => createTemplate().catch((e) => renderPreview(e.message)));
+  els.applyTemplateBtn.addEventListener("click", () => applyTemplate().catch((e) => renderPreview(e.message)));
+  els.createAssetBtn.addEventListener("click", () => createAsset().catch((e) => renderPreview(e.message)));
+  els.listAssetLibraryBtn.addEventListener("click", () => listAssetLibrary().catch((e) => renderPreview(e.message)));
+  els.createModelBtn.addEventListener("click", () => createModel().catch((e) => renderPreview(e.message)));
+  els.testModelBtn.addEventListener("click", () => testModel().catch((e) => renderPreview(e.message)));
 
   document.body.addEventListener("click", (evt) => {
     const target = evt.target;
@@ -288,6 +420,8 @@ function bootstrap() {
   renderDashboard(null);
   renderShots();
   renderAssets();
+  renderAssetLibrary();
+  renderModels(null);
   renderTimeline();
   renderPreview("bootstrap");
   bindEvents();
