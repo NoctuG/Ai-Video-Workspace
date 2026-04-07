@@ -6,6 +6,8 @@ services:
     container_name: ai-video-workspace-backend
     environment:
       - AI_VIDEO_WORKSPACE_CORS=http://localhost:8080,http://127.0.0.1:8080
+      - AI_VIDEO_WORKSPACE_USERNAME=${AI_VIDEO_WORKSPACE_USERNAME:-admin}
+      - AI_VIDEO_WORKSPACE_PASSWORD=${AI_VIDEO_WORKSPACE_PASSWORD:-change_me}
     ports:
       - "8000:8000"
     restart: unless-stopped

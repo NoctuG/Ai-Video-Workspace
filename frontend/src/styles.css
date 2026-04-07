@@ -1,0 +1,10 @@
+body { margin: 0; font-family: Arial, sans-serif; background: #0f1320; color: #e8eef8; }
+.app { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 12px; }
+.panel { border: 1px solid #31405a; background: #151d2c; border-radius: 8px; padding: 12px; }
+h1,h2 { margin: 0 0 8px; }
+textarea,input { width: 100%; border-radius: 6px; border: 1px solid #3f5277; background: #0f1625; color: #fff; padding: 8px; }
+.row { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 8px; margin-top: 8px; }
+button { border: 0; border-radius: 6px; background: #5d8de5; color: #07162e; padding: 8px 10px; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+pre { white-space: pre-wrap; margin: 0; }
+ul { margin: 0; padding-left: 18px; }

@@ -3,60 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Video Workspace · P0</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>AI Video Workspace</title>
   </head>
   <body>
-    <header class="topbar">
-      <h1>AI Video Workspace · P0 闭环工作台</h1>
-    </header>
-
-    <main class="layout">
-      <section class="panel">
-        <h3>1) 项目管理</h3>
-        <label>项目名 <input id="projectName" value="短剧-P0演示项目" /></label>
-        <label>全局风格 <input id="stylePrompt" value="cinematic noir, realistic lighting" /></label>
-        <label>全局种子 <input id="baseSeed" type="number" value="42" /></label>
-        <button class="btn" id="createProjectBtn">创建项目</button>
-        <div id="dashboardBox" class="box"></div>
-      </section>
-
-      <section class="panel">
-        <h3>2) 章节拍摄工作台</h3>
-        <label>章节标题 <input id="chapterTitle" value="第1章·雨夜追踪" /></label>
-        <label>剧本输入 <textarea id="chapterScript" rows="6"></textarea></label>
-        <button class="btn" id="createChapterBtn">剧本精简 + 分镜提取</button>
-
-        <h4>分镜列表</h4>
-        <div class="row">
-          <label>批量时长(s) <input id="batchDuration" type="number" value="5" /></label>
-          <label>批量情绪 <input id="batchEmotion" value="紧张" /></label>
-          <button class="btn" id="applyBatchBtn">批量应用</button>
-          <button class="btn primary" id="generateSelectedBtn">批量生成选中分镜</button>
-        </div>
-        <div id="shotsTable" class="table-wrap"></div>
-      </section>
-
-      <section class="panel">
-        <h3>3) 生成素材管理</h3>
-        <button class="btn" id="reloadAssetsBtn">刷新素材</button>
-        <div id="assetsBox" class="box"></div>
-
-        <h3>4) 后期剪辑（基础）</h3>
-        <div id="timelineBox" class="box"></div>
-        <div class="row">
-          <button class="btn" id="saveTimelineBtn">保存时间线</button>
-          <button class="btn primary" id="exportBtn">导出成片</button>
-        </div>
-      </section>
-    </main>
-
-    <section class="panel preview-panel">
-      <h3>状态预览</h3>
-      <pre id="preview"></pre>
-    </section>
-
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
