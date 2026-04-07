@@ -3,77 +3,88 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Video Workspace</title>
+    <title>AI Video Workspace · P0</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <header class="topbar">
-      <h1>AI Video Workspace · Frontend</h1>
-      <label>API Base <input id="apiBase" value="http://127.0.0.1:8000" /></label>
+      <h1>AI Video Workspace · P0 闭环工作台</h1>
     </header>
 
     <main class="layout">
-      <aside class="panel sticky">
-        <h3>核心流程</h3>
-        <ol id="workflowList"></ol>
-        <h3>任务队列</h3>
-        <div id="taskBoard" class="task-board">暂无任务</div>
-      </aside>
-
-      <section class="panel form-grid">
-        <article class="card">
-          <h3>模块一：系统配置</h3>
-          <textarea id="settingsJson" rows="8"></textarea>
-          <button class="btn" id="saveSettingsBtn">保存系统配置</button>
-        </article>
-
-        <article class="card">
-          <h3>模块二：剧本导入与解析</h3>
-          <label>项目名 <input id="projectName" value="演示项目" /></label>
-          <textarea id="scriptInput" rows="8" placeholder="场景1: 夜雨街道\n主角: 我必须在黎明前找到她。"></textarea>
-          <div class="row">
-            <button class="btn" id="importScriptBtn">导入并解析剧本</button>
-            <button class="btn" id="loadProjectBtn">读取当前项目</button>
-          </div>
-        </article>
-
-        <article class="card">
-          <h3>模块三：AI 校准引擎</h3>
-          <label>风格 <input id="calibStyle" value="cinematic noir" /></label>
-          <label>目标模型 <input id="calibModel" value="gemini-3-pro-image-preview" /></label>
-          <button class="btn" id="runCalibrationBtn">执行场景/分镜/角色校准</button>
-        </article>
-
-        <article class="card">
-          <h3>模块四：素材库生成（可选）</h3>
-          <div class="row">
-            <button class="btn" id="genSceneAssetBtn">生成场景参考图</button>
-            <button class="btn" id="genCharAssetBtn">生成角色参考图</button>
-          </div>
-        </article>
-
-        <article class="card">
-          <h3>模块五：导演分镜工作流</h3>
-          <label>分镜 IDs（逗号分隔）<input id="storyboardIds" value="sb_1,sb_2,sb_3" /></label>
-          <div class="row">
-            <button class="btn" id="syncDirectorBtn">加载剧本分镜</button>
-            <button class="btn" id="batchImageBtn">批量合并生图</button>
-            <button class="btn" id="batchVideoBtn">批量生视频</button>
-          </div>
-        </article>
-
-        <article class="card">
-          <h3>模块六：S级多模态创作流</h3>
-          <textarea id="sclassJson" rows="6"></textarea>
-          <button class="btn primary" id="runSclassBtn">一键 S级 成片任务</button>
-        </article>
+      <section class="panel">
+        <h3>1) 项目管理</h3>
+        <label>项目名 <input id="projectName" value="短剧-P0演示项目" /></label>
+        <label>全局风格 <input id="stylePrompt" value="cinematic noir, realistic lighting" /></label>
+        <label>全局种子 <input id="baseSeed" type="number" value="42" /></label>
+        <button class="btn" id="createProjectBtn">创建项目</button>
+        <div id="dashboardBox" class="box"></div>
       </section>
 
       <section class="panel">
-        <h3>状态预览</h3>
-        <pre id="preview"></pre>
+        <h3>2) 章节拍摄工作台</h3>
+        <label>章节标题 <input id="chapterTitle" value="第1章·雨夜追踪" /></label>
+        <label>剧本输入 <textarea id="chapterScript" rows="6"></textarea></label>
+        <button class="btn" id="createChapterBtn">剧本精简 + 分镜提取</button>
+
+        <h4>分镜列表</h4>
+        <div class="row">
+          <label>批量时长(s) <input id="batchDuration" type="number" value="5" /></label>
+          <label>批量情绪 <input id="batchEmotion" value="紧张" /></label>
+          <button class="btn" id="applyBatchBtn">批量应用</button>
+          <button class="btn primary" id="generateSelectedBtn">批量生成选中分镜</button>
+        </div>
+        <div id="shotsTable" class="table-wrap"></div>
+      </section>
+
+      <section class="panel">
+        <h3>3) 生成素材管理</h3>
+        <button class="btn" id="reloadAssetsBtn">刷新素材</button>
+        <div id="assetsBox" class="box"></div>
+
+        <h4>P1：资产库（项目 + 全局）</h4>
+        <label>资产名称 <input id="assetName" value="主角-雨衣造型" /></label>
+        <label>资产类型
+          <select id="assetType">
+            <option value="character">角色</option>
+            <option value="scene">场景</option>
+            <option value="prop">道具</option>
+            <option value="costume">服装</option>
+          </select>
+        </label>
+        <button class="btn" id="createAssetBtn">加入项目资产库</button>
+        <button class="btn" id="listAssetLibraryBtn">查看资产库</button>
+        <div id="assetLibraryBox" class="box"></div>
+
+        <h3>4) 后期剪辑（基础）</h3>
+        <div id="timelineBox" class="box"></div>
+        <div class="row">
+          <button class="btn" id="saveTimelineBtn">保存时间线</button>
+          <button class="btn primary" id="exportBtn">导出成片</button>
+        </div>
+        <h4>P1：多轨时间线</h4>
+        <button class="btn" id="saveMultiTrackBtn">保存多轨</button>
+      </section>
+
+      <section class="panel">
+        <h3>P1：模板库 + 模型管理</h3>
+        <label>模板名称 <input id="templateName" value="夜戏电影感模板" /></label>
+        <label>模板内容 <textarea id="templateBody" rows="3">cinematic night scene, strong rim light, continuity locked</textarea></label>
+        <button class="btn" id="createTemplateBtn">创建章节模板</button>
+        <button class="btn" id="applyTemplateBtn">应用到当前章节</button>
+
+        <label>模型供应商 <input id="modelProvider" value="openai" /></label>
+        <label>模型名 <input id="modelName" value="gpt-4.1" /></label>
+        <button class="btn" id="createModelBtn">注册文本模型</button>
+        <button class="btn" id="testModelBtn">测试模型连通性</button>
+        <div id="modelBox" class="box"></div>
       </section>
     </main>
+
+    <section class="panel preview-panel">
+      <h3>状态预览</h3>
+      <pre id="preview"></pre>
+    </section>
 
     <script src="config.js"></script>
     <script src="app.js"></script>
