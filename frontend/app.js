@@ -1,31 +1,33 @@
-const WORKFLOW = [
-  "1) 系统配置(API/图床/路由)",
-  "2) 剧本导入与结构化拆解",
-  "3) AI 二次深化校准",
-  "4) 可选素材库生成",
-  "5) 导演分镜批量生成",
-  "6) S级多模态成片",
-];
-
 const state = {
-  projectId: null,
   project: null,
-  calibration: null,
-  settings: null,
+  chapter: null,
+  shots: [],
+  selectedShotIds: new Set(),
+  assets: [],
+  timeline: [],
   tasks: new Map(),
 };
 
 const els = {
-  workflowList: document.getElementById("workflowList"),
-  taskBoard: document.getElementById("taskBoard"),
-  preview: document.getElementById("preview"),
-  settingsJson: document.getElementById("settingsJson"),
   projectName: document.getElementById("projectName"),
-  scriptInput: document.getElementById("scriptInput"),
-  calibStyle: document.getElementById("calibStyle"),
-  calibModel: document.getElementById("calibModel"),
-  storyboardIds: document.getElementById("storyboardIds"),
-  sclassJson: document.getElementById("sclassJson"),
+  stylePrompt: document.getElementById("stylePrompt"),
+  baseSeed: document.getElementById("baseSeed"),
+  createProjectBtn: document.getElementById("createProjectBtn"),
+  dashboardBox: document.getElementById("dashboardBox"),
+  chapterTitle: document.getElementById("chapterTitle"),
+  chapterScript: document.getElementById("chapterScript"),
+  createChapterBtn: document.getElementById("createChapterBtn"),
+  shotsTable: document.getElementById("shotsTable"),
+  batchDuration: document.getElementById("batchDuration"),
+  batchEmotion: document.getElementById("batchEmotion"),
+  applyBatchBtn: document.getElementById("applyBatchBtn"),
+  generateSelectedBtn: document.getElementById("generateSelectedBtn"),
+  reloadAssetsBtn: document.getElementById("reloadAssetsBtn"),
+  assetsBox: document.getElementById("assetsBox"),
+  timelineBox: document.getElementById("timelineBox"),
+  saveTimelineBtn: document.getElementById("saveTimelineBtn"),
+  exportBtn: document.getElementById("exportBtn"),
+  preview: document.getElementById("preview"),
 };
 
 function api(path) {
@@ -33,130 +35,193 @@ function api(path) {
   return `${base.replace(/\/$/, "")}${path}`;
 }
 
-async function post(path, body) {
-  const r = await fetch(api(path), {
-    method: "POST",
+async function request(path, method = "GET", body) {
+  const res = await fetch(api(path), {
+    method,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: body ? JSON.stringify(body) : undefined,
   });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
-async function get(path) {
-  const r = await fetch(api(path));
-  if (!r.ok) throw new Error(await r.text());
-  return r.json();
-}
-
-function ids() {
-  return els.storyboardIds.value
-    .split(",")
-    .map((x) => x.trim())
-    .filter(Boolean);
-}
-
-function renderWorkflow() {
-  els.workflowList.innerHTML = WORKFLOW.map((x) => `<li>${x}</li>`).join("");
-}
-
-function renderTasks() {
-  const arr = [...state.tasks.values()].sort((a, b) => b.updated_at - a.updated_at);
-  if (!arr.length) {
-    els.taskBoard.textContent = "暂无任务";
-    return;
+  if (!res.ok) {
+    throw new Error(await res.text());
   }
-  els.taskBoard.innerHTML = arr
-    .map(
-      (t) => `<div class='task-item'>
-      <strong>${t.task_type}</strong> · ${t.status} (${t.progress}%)<br/>
-      <small>${t.id.slice(0, 8)}... attempt ${t.attempt}/${t.max_retries + 1}</small><br/>
-      <small>${t.message}</small>
-    </div>`
-    )
-    .join("");
+  return res.json();
 }
 
-function refreshPreview(lastAction) {
+function renderPreview(lastAction) {
   els.preview.textContent = JSON.stringify(
     {
       lastAction,
-      projectId: state.projectId,
-      settings: state.settings,
       project: state.project,
-      calibration: state.calibration,
-      tasks: [...state.tasks.values()].map((t) => ({
-        id: t.id,
-        type: t.task_type,
-        status: t.status,
-        progress: t.progress,
-        result: t.result?.asset_url,
-      })),
+      chapter: state.chapter,
+      shotCount: state.shots.length,
+      selectedShots: [...state.selectedShotIds],
+      assets: state.assets,
+      timeline: state.timeline,
+      tasks: [...state.tasks.values()].map((x) => ({ id: x.id, status: x.status, progress: x.progress })),
     },
     null,
     2
   );
 }
 
-function getDefaultSettings() {
-  return {
-    api_providers: [
-      {
-        name: "memefast",
-        base_url: "https://api.memefast.example",
-        keys: ["mf_key_1", "mf_key_2", "mf_key_3"],
-      },
-      {
-        name: "runninghub",
-        base_url: "https://api.runninghub.example",
-        keys: ["rh_key_1", "rh_key_2"],
-      },
-    ],
-    routes: [
-      {
-        capability: "text_to_image",
-        provider_name: "memefast",
-        model: "gemini-3-pro-image-preview",
-      },
-      {
-        capability: "image_to_video",
-        provider_name: "runninghub",
-        model: "doubao-seedance-1-5-pro-251215",
-      },
-      {
-        capability: "text_to_video",
-        provider_name: "runninghub",
-        model: "doubao-seedance-1-5-pro-251215",
-      },
-      {
-        capability: "llm",
-        provider_name: "memefast",
-        model: "gpt-4.1",
-      },
-    ],
-    image_bed: {
-      provider: "oss-proxy",
-      endpoint: "https://imgbed.example/upload",
-      keys: ["img_key_1", "img_key_2"],
+function renderDashboard(data) {
+  if (!data) {
+    els.dashboardBox.textContent = "暂无项目";
+    return;
+  }
+  els.dashboardBox.innerHTML = `
+    <div>项目：<strong>${data.project.name}</strong></div>
+    <div>章节数：${data.chapter_count}</div>
+    <div>分镜数：${data.shot_count}</div>
+    <div>已生成素材：${data.generated_count}</div>
+    <div>全局风格：${data.project.style_prompt}</div>
+    <div>全局种子：${data.project.base_seed}</div>
+  `;
+}
+
+function renderShots() {
+  if (!state.shots.length) {
+    els.shotsTable.innerHTML = "<p>暂无分镜</p>";
+    return;
+  }
+  const rows = state.shots
+    .map((s) => {
+      const checked = state.selectedShotIds.has(s.id) ? "checked" : "";
+      return `<tr>
+      <td><input type='checkbox' data-shot-check='${s.id}' ${checked}/></td>
+      <td>${s.order}</td>
+      <td>${s.content}</td>
+      <td>${s.camera_size}</td>
+      <td>${s.emotion}</td>
+      <td>${s.duration_sec}s</td>
+      <td><button class='btn mini' data-generate='${s.id}'>生成视频</button></td>
+    </tr>`;
+    })
+    .join("");
+
+  els.shotsTable.innerHTML = `
+    <table>
+      <thead><tr><th>选中</th><th>#</th><th>内容</th><th>景别</th><th>情绪</th><th>时长</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderAssets() {
+  if (!state.assets.length) {
+    els.assetsBox.innerHTML = "<p>暂无生成素材</p>";
+    return;
+  }
+  els.assetsBox.innerHTML = state.assets
+    .map(
+      (a) => `<div class='asset-item'>
+      <div><strong>${a.type}</strong> · ${a.quality}</div>
+      <div>shot: ${a.shot_id.slice(0, 8)}...</div>
+      <a href='${a.url}' target='_blank'>${a.url}</a>
+      <button class='btn mini' data-add-clip='${a.id}'>加入时间线</button>
+    </div>`
+    )
+    .join("");
+}
+
+function renderTimeline() {
+  if (!state.timeline.length) {
+    els.timelineBox.innerHTML = "<p>时间线为空</p>";
+    return;
+  }
+  els.timelineBox.innerHTML = state.timeline
+    .map(
+      (c, idx) => `<div class='timeline-item'>
+      <span>#${idx + 1} ${c.asset_id.slice(0, 8)}... (${c.duration_sec}s)</span>
+      <button class='btn mini danger' data-remove-clip='${idx}'>移除</button>
+    </div>`
+    )
+    .join("");
+}
+
+async function refreshDashboard() {
+  if (!state.project) return;
+  const dash = await request(`/api/projects/${state.project.id}/dashboard`);
+  renderDashboard(dash);
+}
+
+async function createProject() {
+  state.project = await request("/api/projects", "POST", {
+    name: els.projectName.value,
+    style_prompt: els.stylePrompt.value,
+    base_seed: Number(els.baseSeed.value),
+    style_lock: true,
+  });
+  await refreshDashboard();
+  renderPreview("create-project");
+}
+
+async function createChapter() {
+  if (!state.project) throw new Error("请先创建项目");
+  const data = await request(`/api/projects/${state.project.id}/chapters`, "POST", {
+    title: els.chapterTitle.value,
+    script: els.chapterScript.value,
+  });
+  state.chapter = data.chapter;
+  state.shots = data.shots;
+  state.selectedShotIds.clear();
+  renderShots();
+  await refreshDashboard();
+  renderPreview("create-chapter");
+}
+
+async function applyBatch() {
+  const shot_ids = [...state.selectedShotIds];
+  if (!shot_ids.length) return;
+  await request("/api/shots/batch-update", "POST", {
+    shot_ids,
+    patch: {
+      duration_sec: Number(els.batchDuration.value),
+      emotion: els.batchEmotion.value,
     },
-  };
+  });
+  state.shots = await Promise.all(state.shots.map((s) => request(`/api/shots/${s.id}`, "PATCH", {})));
+  renderShots();
+  renderPreview("batch-update");
 }
 
-function getDefaultSClass() {
-  return {
-    groups: [
-      { group_name: "序章", storyboard_ids: ["sb_1", "sb_2"] },
-      { group_name: "冲突", storyboard_ids: ["sb_3", "sb_4", "sb_5"] },
-    ],
-  };
+async function generateShot(shotId) {
+  if (!state.project) return;
+  const data = await request(`/api/shots/${shotId}/generate`, "POST", {
+    model: "seedance-1.5",
+    duration_sec: 5,
+  });
+  state.tasks.set(data.task.id, data.task);
+  await loadAssets();
+  await refreshDashboard();
+  renderPreview(`generate-shot:${shotId}`);
 }
 
-async function enqueueTask(task_type, input) {
-  if (!state.projectId) throw new Error("请先导入剧本并创建项目");
-  const task = await post("/api/tasks", { project_id: state.projectId, task_type, input });
-  state.tasks.set(task.id, task);
-  renderTasks();
-  refreshPreview(`enqueue:${task_type}`);
+async function generateSelected() {
+  for (const shotId of state.selectedShotIds) {
+    await generateShot(shotId);
+  }
+}
+
+async function loadAssets() {
+  if (!state.project) return;
+  state.assets = await request(`/api/projects/${state.project.id}/generated-assets`);
+  renderAssets();
+}
+
+async function saveTimeline() {
+  if (!state.project) return;
+  const timeline = await request(`/api/projects/${state.project.id}/timeline`, "POST", {
+    clips: state.timeline,
+    bgm_url: null,
+  });
+  renderPreview(`save-timeline:${timeline.clips.length}`);
+}
+
+async function exportProject() {
+  if (!state.project) return;
+  const result = await request(`/api/projects/${state.project.id}/export`, "POST", {});
+  renderPreview(`export:${result.export_url}`);
 }
 
 function connectWs() {
@@ -167,129 +232,66 @@ function connectWs() {
     const payload = JSON.parse(evt.data);
     if (payload.task) {
       state.tasks.set(payload.task.id, payload.task);
-      renderTasks();
-      refreshPreview(`ws:${payload.event}`);
+      renderPreview(`ws:${payload.event}`);
     }
   };
   ws.onclose = () => setTimeout(connectWs, 1500);
 }
 
-async function bindActions() {
-  document.getElementById("saveSettingsBtn").addEventListener("click", async () => {
-    try {
-      const payload = JSON.parse(els.settingsJson.value);
-      state.settings = await post("/api/settings", payload);
-      refreshPreview("save-settings");
-    } catch (e) {
-      refreshPreview(`save-settings-failed: ${e.message}`);
+function bindEvents() {
+  els.createProjectBtn.addEventListener("click", () => createProject().catch((e) => renderPreview(e.message)));
+  els.createChapterBtn.addEventListener("click", () => createChapter().catch((e) => renderPreview(e.message)));
+  els.applyBatchBtn.addEventListener("click", () => applyBatch().catch((e) => renderPreview(e.message)));
+  els.generateSelectedBtn.addEventListener("click", () => generateSelected().catch((e) => renderPreview(e.message)));
+  els.reloadAssetsBtn.addEventListener("click", () => loadAssets().catch((e) => renderPreview(e.message)));
+  els.saveTimelineBtn.addEventListener("click", () => saveTimeline().catch((e) => renderPreview(e.message)));
+  els.exportBtn.addEventListener("click", () => exportProject().catch((e) => renderPreview(e.message)));
+
+  document.body.addEventListener("click", (evt) => {
+    const target = evt.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const shotCheck = target.getAttribute("data-shot-check");
+    if (shotCheck) {
+      if (target.checked) state.selectedShotIds.add(shotCheck);
+      else state.selectedShotIds.delete(shotCheck);
+      return;
     }
-  });
 
-  document.getElementById("importScriptBtn").addEventListener("click", async () => {
-    try {
-      const project = await post("/api/script/import", {
-        project_name: els.projectName.value,
-        raw_script: els.scriptInput.value,
-      });
-      state.project = project;
-      state.projectId = project.id;
-      refreshPreview("import-script");
-    } catch (e) {
-      refreshPreview(`import-script-failed: ${e.message}`);
+    const generateId = target.getAttribute("data-generate");
+    if (generateId) {
+      generateShot(generateId).catch((e) => renderPreview(e.message));
+      return;
     }
-  });
 
-  document.getElementById("loadProjectBtn").addEventListener("click", async () => {
-    if (!state.projectId) return;
-    state.project = await get(`/api/projects/${state.projectId}`);
-    refreshPreview("load-project");
-  });
-
-  document.getElementById("runCalibrationBtn").addEventListener("click", async () => {
-    try {
-      state.calibration = await post("/api/calibration", {
-        project_id: state.projectId,
-        style: els.calibStyle.value,
-        target_model: els.calibModel.value,
-      });
-      refreshPreview("run-calibration");
-    } catch (e) {
-      refreshPreview(`run-calibration-failed: ${e.message}`);
+    const addClip = target.getAttribute("data-add-clip");
+    if (addClip) {
+      const asset = state.assets.find((x) => x.id === addClip);
+      if (!asset) return;
+      state.timeline.push({ asset_id: asset.id, duration_sec: 5, url: asset.url });
+      renderTimeline();
+      renderPreview("add-clip");
+      return;
     }
-  });
 
-  document.getElementById("genSceneAssetBtn").addEventListener("click", async () => {
-    try {
-      await enqueueTask("scene_asset_generation", { scene_count: state.project?.parsed?.scenes?.length || 0 });
-    } catch (e) {
-      refreshPreview(`scene-asset-failed: ${e.message}`);
-    }
-  });
-
-  document.getElementById("genCharAssetBtn").addEventListener("click", async () => {
-    try {
-      await enqueueTask("character_asset_generation", {
-        character_count: state.project?.parsed?.characters?.length || 0,
-      });
-    } catch (e) {
-      refreshPreview(`char-asset-failed: ${e.message}`);
-    }
-  });
-
-  document.getElementById("syncDirectorBtn").addEventListener("click", async () => {
-    try {
-      const data = await post(`/api/director/sync?project_id=${state.projectId}`, {});
-      const loadedIds = data.storyboards.map((x) => x.id).join(",");
-      els.storyboardIds.value = loadedIds;
-      refreshPreview("director-sync");
-    } catch (e) {
-      refreshPreview(`director-sync-failed: ${e.message}`);
-    }
-  });
-
-  document.getElementById("batchImageBtn").addEventListener("click", async () => {
-    try {
-      const data = await post("/api/director/batch-image", { project_id: state.projectId, storyboard_ids: ids() });
-      refreshPreview(`batch-image:${data.queued}`);
-    } catch (e) {
-      refreshPreview(`batch-image-failed: ${e.message}`);
-    }
-  });
-
-  document.getElementById("batchVideoBtn").addEventListener("click", async () => {
-    try {
-      const data = await post("/api/director/batch-video", { project_id: state.projectId, storyboard_ids: ids() });
-      refreshPreview(`batch-video:${data.queued}`);
-    } catch (e) {
-      refreshPreview(`batch-video-failed: ${e.message}`);
-    }
-  });
-
-  document.getElementById("runSclassBtn").addEventListener("click", async () => {
-    try {
-      const payload = JSON.parse(els.sclassJson.value);
-      const data = await post("/api/sclass/compose", {
-        project_id: state.projectId,
-        groups: payload.groups,
-      });
-      refreshPreview(`sclass:${data.accepted_groups}`);
-    } catch (e) {
-      refreshPreview(`sclass-failed: ${e.message}`);
+    const removeClipIndex = target.getAttribute("data-remove-clip");
+    if (removeClipIndex !== null) {
+      state.timeline.splice(Number(removeClipIndex), 1);
+      renderTimeline();
+      renderPreview("remove-clip");
     }
   });
 }
 
 function bootstrap() {
-  renderWorkflow();
-  els.settingsJson.value = JSON.stringify(getDefaultSettings(), null, 2);
-  els.sclassJson.value = JSON.stringify(getDefaultSClass(), null, 2);
-  els.scriptInput.value = `场景1: 夜雨街道\n主角: 我必须在黎明前找到她。\n配角: 我只给你三分钟。\n场景2: 天台对峙\n主角: 真相就在这份文件里。`;
-  refreshPreview("bootstrap");
-  renderTasks();
-  const apiBaseInput = document.getElementById("apiBase");
-  apiBaseInput.value = window.__AI_VIDEO_WORKSPACE__?.API_BASE || "http://127.0.0.1:8000";
+  els.chapterScript.value = "场景1：夜雨街道\n主角: 我必须在黎明前找到她。\n配角: 我只给你三分钟。\n场景2：天台对峙\n主角: 真相就在这份文件里。";
+  renderDashboard(null);
+  renderShots();
+  renderAssets();
+  renderTimeline();
+  renderPreview("bootstrap");
+  bindEvents();
   connectWs();
-  bindActions();
 }
 
 bootstrap();
